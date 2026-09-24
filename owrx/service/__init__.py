@@ -361,6 +361,9 @@ class ServiceHandler(SdrSourceEventClient):
         elif mod == "modbus":
             from csdr.chain.toolbox import ModbusDemodulator
             return ModbusDemodulator(service=True)
+        elif mod == "fsk600":
+            from csdr.chain.toolbox import Fsk600Demodulator
+            return Fsk600Demodulator(service=True)
         elif mod == "ism":
             from csdr.chain.toolbox import IsmDemodulator
             return IsmDemodulator(250000, service=True)

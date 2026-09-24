@@ -3,6 +3,7 @@ from pycsdr.types import Format
 from csdr.module import PopenModule, ThreadModule
 from owrx.config import Config
 from owrx.fsk import FskUartDecoder
+from owrx.fsk600 import Fsk600Decoder
 from array import array
 
 
@@ -55,6 +56,34 @@ class FskUartModule(ThreadModule):
             if frames:
                 self.writer.write(b"".join(
                     b"%d %s\n" % (bits, frame.hex().encode()) for bits, frame in frames
+                ))
+
+
+class Fsk600Module(ThreadModule):
+    """
+    Demodulates 600 baud 1300/1700 Hz audio FSK bursts and outputs one line per
+    burst, formatted as "<idle bits before the burst> <burst bits>".
+    """
+    def __init__(self, sampleRate: int):
+        self.decoder = Fsk600Decoder(sampleRate)
+        super().__init__()
+
+    def getInputFormat(self) -> Format:
+        return Format.FLOAT
+
+    def getOutputFormat(self) -> Format:
+        return Format.CHAR
+
+    def run(self):
+        while self.doRun:
+            data = self.reader.read()
+            if data is None:
+                self.doRun = False
+                break
+            bursts = self.decoder.process(array("f", data.tobytes()))
+            if bursts:
+                self.writer.write(b"".join(
+                    b"%d %s\n" % (int(idle), bits.encode()) for _, bits, idle in bursts
                 ))
 
 

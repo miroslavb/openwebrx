@@ -1,8 +1,8 @@
 from csdr.chain.demodulator import ServiceDemodulator, DialFrequencyReceiver
-from csdr.module.toolbox import Rtl433Module, MultimonModule, RedseaModule, CwSkimmerModule, RttySkimmerModule, LameModule, FskUartModule
+from csdr.module.toolbox import Rtl433Module, MultimonModule, RedseaModule, CwSkimmerModule, RttySkimmerModule, LameModule, FskUartModule, Fsk600Module
 from pycsdr.modules import Convert, Agc, FmDemod, RealPart, SnrSquelch
 from pycsdr.types import Format
-from owrx.toolbox import TextParser, PageParser, SelCallParser, EasParser, IsmParser, RdsParser, Mp3Recorder, ModbusParser
+from owrx.toolbox import TextParser, PageParser, SelCallParser, EasParser, IsmParser, RdsParser, Mp3Recorder, ModbusParser, Fsk600Parser
 from owrx.skimmer import CwSkimmerParser, RttySkimmerParser
 from owrx.transcribe import WhisperTranscriber
 from owrx.config import Config
@@ -114,6 +114,32 @@ class ModbusDemodulator(ServiceDemodulator, DialFrequencyReceiver):
         workers = [
             FmDemod(),
             FskUartModule(self.sampleRate, 1200, 1300, 2100),
+            self.parser,
+        ]
+        super().__init__(workers)
+
+    def getFixedAudioRate(self) -> int:
+        return self.sampleRate
+
+    def supportsSquelch(self) -> bool:
+        return True
+
+    def setDialFrequency(self, frequency: int) -> None:
+        self.parser.setDialFrequency(frequency)
+
+
+class Fsk600Demodulator(ServiceDemodulator, DialFrequencyReceiver):
+    """
+    Proprietary 600 baud audio-FSK (1300/1700 Hz) dispatch status protocol on
+    an FM channel: unit status reports, dispatcher calls, acknowledgements and
+    data messages with 6-bit unit addresses and odd parity.
+    """
+    def __init__(self, service: bool = False):
+        self.sampleRate = 12000
+        self.parser = Fsk600Parser(service=service)
+        workers = [
+            FmDemod(),
+            Fsk600Module(self.sampleRate),
             self.parser,
         ]
         super().__init__(workers)

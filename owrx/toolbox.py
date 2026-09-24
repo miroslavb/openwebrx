@@ -6,9 +6,11 @@ from csdr.module import ThreadModule, LineBasedModule
 from pycsdr.types import Format
 from owrx.dsame3.dsame import same_decode_string
 from owrx.modbus import ModbusDecoder, findFrames
+from owrx.fsk600 import Fsk600Context
 from datetime import datetime, timezone
 
 import json
+import time
 import re
 
 import logging
@@ -415,5 +417,34 @@ class ModbusParser(TextParser):
                 out["color"] = self.colors.getColor(out["address"])
         # A single decoded frame is returned; only the last frame of a
         # run of back-to-back frames is shown, all of them are reported
+        return out
+
+
+class Fsk600Parser(TextParser):
+    def __init__(self, service: bool = False):
+        self.colors = ColorCache()
+        # Recent B calls, to tell C acknowledgements from data messages
+        self.context = Fsk600Context()
+        # Construct parent object
+        super().__init__(filePrefix="FSK600", service=service)
+
+    def parse(self, msg: bytes):
+        # Expect "<idle bits before burst> <burst bits>" from Fsk600Module
+        parts = msg.split()
+        if len(parts) != 2:
+            return {}
+        out = {}
+        for m in self.context.parse(parts[1].decode("ascii", "replace"), time.monotonic()):
+            out = m
+            out["mode"] = "FSK600"
+            out["timestamp"] = round(datetime.now().timestamp() * 1000)
+            # Add frequency, if known
+            if self.frequency:
+                out["freq"] = self.frequency
+            # Report message
+            ReportingEngine.getSharedInstance().spot(dict(out))
+            # In interactive mode, color messages based on unit address
+            if not self.service:
+                out["color"] = self.colors.getColor(out["address"])
         return out
 

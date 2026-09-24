@@ -438,6 +438,52 @@ $.fn.modbusMessagePanel = function() {
     return this.data('panel');
 };
 
+Fsk600MessagePanel = function(el) {
+    MessagePanel.call(this, el);
+    this.initClearTimer();
+}
+
+Fsk600MessagePanel.prototype = Object.create(MessagePanel.prototype);
+
+Fsk600MessagePanel.prototype.supportsMessage = function(message) {
+    return message['mode'] === 'FSK600';
+};
+
+Fsk600MessagePanel.prototype.render = function() {
+    $(this.el).append($(
+        '<table>' +
+            '<thead><tr>' +
+                '<th class="timestamp">Time</th>' +
+                '<th class="address">Unit</th>' +
+                '<th class="type">Type</th>' +
+                '<th class="message">Status / data</th>' +
+            '</tr></thead>' +
+            '<tbody></tbody>' +
+        '</table>'
+    ));
+};
+
+Fsk600MessagePanel.prototype.pushMessage = function(msg) {
+    var color = msg.hasOwnProperty('color')? msg.color : '#FFF';
+    var $b = $(this.el).find('tbody');
+    $b.append($(
+        '<tr>' +
+            '<td class="timestamp">' + Utils.HHMMSS(msg.timestamp) + '</td>' +
+            '<td class="address">' + msg.address + '</td>' +
+            '<td class="type">' + Utils.htmlEscape(msg.type + ' ' + msg.role) + '</td>' +
+            '<td class="message">' + Utils.htmlEscape(msg.message || '') + '</td>' +
+        '</tr>'
+    ).css('background-color', color).css('color', '#000'));
+    this.scrollToBottom();
+};
+
+$.fn.fsk600MessagePanel = function() {
+    if (!this.data('panel')) {
+        this.data('panel', new Fsk600MessagePanel(this));
+    }
+    return this.data('panel');
+};
+
 HfdlMessagePanel = function(el) {
     MessagePanel.call(this, el);
     this.initClearTimer();
